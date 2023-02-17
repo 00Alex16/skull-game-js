@@ -4,11 +4,18 @@ const btnUp = document.querySelector('#up');
 const btnDown = document.querySelector('#down');
 const btnRight = document.querySelector('#right');
 const btnLeft = document.querySelector('#left');
+const spanLives = document.querySelector('#lives');
+const spanTime = document.querySelector('#time');
+const spanRecord = document.querySelector('#record');
+const pResult = document.querySelector('#result');
 
 let canvasSize;
 let elementsSize;
 let level = 0;
 let lives = 3;
+let timeStart;
+let timePlayer;
+let timeInterval;
 
 const playerPosition = {
 	x: undefined,
@@ -25,16 +32,20 @@ window.addEventListener('resize', setCanvasSize);
 
 function setCanvasSize() {
 	if (window.innerHeight > window.innerWidth) {
-		canvasSize = window.innerWidth * 0.8;
+		canvasSize = window.innerWidth * 0.7;
 	} else {
-		canvasSize = window.innerHeight * 0.8;
+		canvasSize = window.innerHeight * 0.7;
 	}
+
+	canvasSize = Number(canvasSize.toFixed(0));
 
 	canvas.setAttribute('width', canvasSize);
 	canvas.setAttribute('height', canvasSize);
 
 	elementsSize = canvasSize / 10;
 
+	playerPosition.x = undefined;
+	playerPosition.y = undefined;
 	startGame();
 }
 
@@ -50,8 +61,16 @@ function startGame() {
 		return;
 	}
 
+	if (!timeStart) {
+		timeStart = Date.now();
+		timeInterval = setInterval(showTime, 100);
+		showRecord();
+	}
+
 	const mapRows = map.trim().split('\n');
 	const mapRowCols = mapRows.map(row => row.trim().split(''));
+	
+	showLives();
 
 	enemyPositions = [];
 	game.clearRect(0, 0, canvasSize, canvasSize);
@@ -113,6 +132,7 @@ function levelFailed() {
 	if (lives <= 0) {
 		level = 0;
 		lives = 3;
+		timeStart = undefined;
 	}
 	playerPosition.x = undefined;
 	playerPosition.y = undefined;
@@ -120,7 +140,34 @@ function levelFailed() {
 }
 
 function gameFinished() {
-	console.log('You finished the game!');
+	clearInterval(timeInterval);
+	const recordTime = localStorage.getItem('record_time');
+	const playerTime = Date.now() - timeStart;
+	if (recordTime) {
+		if (recordTime >= playerTime) {
+			localStorage.setItem('record_time', playerTime);
+			pResult.innerHTML = 'SUPERASTE EL RECORD!';
+		} else {
+			pResult.innerHTML = 'Lo siento, no has superado el record';
+		}
+	} else {
+		localStorage.setItem('record_time', playerTime);
+	}
+}
+
+function showLives() {
+	const heartsArray = Array(lives).fill(emojis['HEART']);
+	spanLives.innerHTML = '';
+	heartsArray.forEach(heart => spanLives.append(heart));
+}
+
+function showTime() {
+	spanTime.innerHTML = Date.now() - timeStart;
+}
+
+function showRecord() {
+	const record = localStorage.getItem('record_time');
+	spanRecord.innerHTML = record ? record : 'Aún no hay un record registrado.';
 }
 
 window.addEventListener('keydown', moveByKeys);
