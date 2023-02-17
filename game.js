@@ -7,11 +7,18 @@ const btnLeft = document.querySelector('#left');
 
 let canvasSize;
 let elementsSize;
+let level = 0;
+let lives = 3;
 
 const playerPosition = {
 	x: undefined,
 	y: undefined
 }
+const giftPosition = {
+	x: undefined,
+	y: undefined
+}
+let enemyPositions = [];
 
 window.addEventListener('load', setCanvasSize);
 window.addEventListener('resize', setCanvasSize);
@@ -36,10 +43,17 @@ function startGame() {
 	game.font = elementsSize + 'px Verdana';
 	game.textAlign = 'end';
 
-	const map = maps[0];
+	const map = maps[level];
+
+	if (!map) {
+		gameFinished();
+		return;
+	}
+
 	const mapRows = map.trim().split('\n');
 	const mapRowCols = mapRows.map(row => row.trim().split(''));
 
+	enemyPositions = [];
 	game.clearRect(0, 0, canvasSize, canvasSize);
 	mapRowCols.forEach((row, rowIndex) => {
 		row.forEach((col, colIndex) => {
@@ -52,6 +66,14 @@ function startGame() {
 					playerPosition.x = posX;
 					playerPosition.y = posY;
 				}
+			} else if (col == 'I') {
+				giftPosition.x = posX;
+				giftPosition.y = posY;
+			} else if (col == 'X') {
+				enemyPositions.push({
+					x: posX,
+					y: posY
+				});
 			}
 			
 			game.fillText(emoji, posX, posY);
@@ -62,7 +84,43 @@ function startGame() {
 }
 
 function movePlayer() {
+	const giftCollisionX = playerPosition.x.toFixed(3) == giftPosition.x.toFixed(3);
+	const giftCollisionY = playerPosition.y.toFixed(3) == giftPosition.y.toFixed(3);
+	const giftCollision = giftCollisionX && giftCollisionY;
+	if (giftCollision) {
+		nextLevel();
+	}
+
+	const enemyCollision = enemyPositions.find(enemy => {
+		const enemyCollisionX = enemy.x.toFixed(3) == playerPosition.x.toFixed(3);
+		const enemyCollisionY = enemy.y.toFixed(3) == playerPosition.y.toFixed(3);
+		return enemyCollisionX && enemyCollisionY;
+	});
+	if (enemyCollision) {
+		levelFailed();
+	}
+
 	game.fillText(emojis['PLAYER'], playerPosition.x, playerPosition.y);
+}
+
+function nextLevel() {
+	level ++;
+	startGame();
+}
+
+function levelFailed() {
+	lives--;
+	if (lives <= 0) {
+		level = 0;
+		lives = 3;
+	}
+	playerPosition.x = undefined;
+	playerPosition.y = undefined;
+	startGame();
+}
+
+function gameFinished() {
+	console.log('You finished the game!');
 }
 
 window.addEventListener('keydown', moveByKeys);
