@@ -16,6 +16,7 @@ let lives = 3;
 let timeStart;
 let timePlayer;
 let timeInterval;
+let margin = 8;
 
 const playerPosition = {
 	x: undefined,
@@ -39,10 +40,12 @@ function setCanvasSize() {
 
 	canvasSize = Number(canvasSize.toFixed(0));
 
-	canvas.setAttribute('width', canvasSize);
-	canvas.setAttribute('height', canvasSize);
+	elementsSize = Math.ceil(canvasSize / 10);
 
-	elementsSize = canvasSize / 10;
+	canvasSize = elementsSize * 10;
+
+	canvas.setAttribute('width', canvasSize);
+	canvas.setAttribute('height', canvasSize + margin); // Margin
 
 	playerPosition.x = undefined;
 	playerPosition.y = undefined;
@@ -50,20 +53,19 @@ function setCanvasSize() {
 }
 
 function startGame() {
-	console.log({canvasSize, elementsSize});
 	game.font = elementsSize + 'px Verdana';
 	game.textAlign = 'end';
 
 	const map = maps[level];
 
 	if (!map) {
-		gameFinished();
+		screenGameFinished();
 		return;
 	}
 
 	if (!timeStart) {
 		timeStart = Date.now();
-		timeInterval = setInterval(showTime, 100);
+		timeInterval = setInterval(showTime, 1000);
 		showRecord();
 	}
 
@@ -82,24 +84,74 @@ function startGame() {
 			
 			if (col == 'O') {
 				if (!playerPosition.x && !playerPosition.y) {
-					playerPosition.x = posX;
+					playerPosition.x = posX + margin;
 					playerPosition.y = posY;
 				}
 			} else if (col == 'I') {
-				giftPosition.x = posX;
+				giftPosition.x = posX + margin;
 				giftPosition.y = posY;
 			} else if (col == 'X') {
 				enemyPositions.push({
-					x: posX,
+					x: posX + margin,
 					y: posY
 				});
 			}
-			
-			game.fillText(emoji, posX, posY);
+
+			game.fillText(emoji, posX + margin, posY);
 		});
 	});
 
 	movePlayer();
+}
+
+function screenLevelFailed() {
+	const map = maps[level];
+
+	const mapRows = map.trim().split('\n');
+	const mapRowCols = mapRows.map(row => row.trim().split(''));
+
+	playerPosition.x = undefined;
+	playerPosition.y = undefined;
+	game.clearRect(0, 0, canvasSize, canvasSize);
+	mapRowCols.forEach((row, rowIndex) => {
+		row.forEach((col, colIndex) => {
+			let emoji = emojis[col];
+			const posX = elementsSize * (colIndex + 1);
+			const posY = elementsSize * (rowIndex + 1);
+			
+			if (col == 'X') {
+				emoji = emojis['GAME_OVER'];
+			}
+
+			game.fillText(emoji, posX + margin, posY);
+		});
+	});
+
+	setTimeout(() => {levelFailed()}, 1500);
+}
+
+function screenGameFinished() {
+	const map = maps[level - 1];
+
+	const mapRows = map.trim().split('\n');
+	const mapRowCols = mapRows.map(row => row.trim().split(''));
+
+	game.clearRect(0, 0, canvasSize, canvasSize);
+	mapRowCols.forEach((row, rowIndex) => {
+		row.forEach((col, colIndex) => {
+			let emoji = emojis[col];
+			const posX = elementsSize * (colIndex + 1);
+			const posY = elementsSize * (rowIndex + 1);
+			
+			if (col == 'X') {
+				emoji = emojis['WIN'];
+			}
+
+			game.fillText(emoji, posX + margin, posY);
+		});
+	});
+
+	setTimeout(() => {gameFinished()}, 1500);
 }
 
 function movePlayer() {
@@ -116,10 +168,27 @@ function movePlayer() {
 		return enemyCollisionX && enemyCollisionY;
 	});
 	if (enemyCollision) {
-		levelFailed();
+		if (lives > 1) {
+			bombExplosion(enemyCollision);
+		} else {
+			screenLevelFailed();
+		}
 	}
 
 	game.fillText(emojis['PLAYER'], playerPosition.x, playerPosition.y);
+}
+
+function bombExplosion(posEnemy) {
+	playerPosition.x = undefined;
+	playerPosition.y = undefined;
+	game.clearRect(
+		posEnemy.x - elementsSize - margin, 
+		posEnemy.y - elementsSize + margin, 
+		elementsSize, 
+		elementsSize
+	);
+	game.fillText(emojis['BOOM'], posEnemy.x, posEnemy.y);
+	setTimeout(() => {levelFailed()}, 500);
 }
 
 function nextLevel() {
@@ -142,7 +211,7 @@ function levelFailed() {
 function gameFinished() {
 	clearInterval(timeInterval);
 	const recordTime = localStorage.getItem('record_time');
-	const playerTime = Date.now() - timeStart;
+	const playerTime = Math.floor((Date.now() - timeStart) / 1000);
 	if (recordTime) {
 		if (recordTime >= playerTime) {
 			localStorage.setItem('record_time', playerTime);
@@ -153,6 +222,8 @@ function gameFinished() {
 	} else {
 		localStorage.setItem('record_time', playerTime);
 	}
+
+	window.location.reload();
 }
 
 function showLives() {
@@ -162,7 +233,7 @@ function showLives() {
 }
 
 function showTime() {
-	spanTime.innerHTML = Date.now() - timeStart;
+	spanTime.innerHTML = Math.floor((Date.now() - timeStart) / 1000);
 }
 
 function showRecord() {
@@ -199,14 +270,14 @@ function moveDown() {
 }
 
 function moveRight() {
-	if (playerPosition.x < canvasSize) {
+	if (playerPosition.x + margin < canvasSize) {
 		playerPosition.x += elementsSize;
 		startGame();
 	}
 }
 
 function moveLeft() {
-	if (playerPosition.x > elementsSize) {
+	if (playerPosition.x - 8 > elementsSize) {
 		playerPosition.x -= elementsSize;
 		startGame();
 	}
